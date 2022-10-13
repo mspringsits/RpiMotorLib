@@ -286,8 +286,8 @@ class A4988Nema(object):
                         stepdelay = saved_stepdelay / ((i + 1) / ramp_steps)
                     else:
                         stepdelay = saved_stepdelay / ((steps - i) / ramp_steps)
-                    if stepdelay > .005:
-                        stepdelay = .005
+                    if stepdelay > .05:
+                        stepdelay = .05
                 else:
                     stepdelay = saved_stepdelay
 
