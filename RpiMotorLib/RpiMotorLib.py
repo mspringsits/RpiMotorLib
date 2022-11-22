@@ -447,15 +447,15 @@ class A4988Nema(object):
             for i in range(steps):
                 t_fractal = (math.pi * 2) / steps
                 t = i * t_fractal
+                x = math.cos(t)
+                y = math.sin(t)
                 if axis == "x":
-                    x = math.cos(t)
-                    clockwise = True if x > 0 else False
-                    pace = 0.1 + math.fabs(10 * math.sin(t))
+                    clockwise = True if y > 0 else False
+                    pace = 0.1 + math.fabs(10 * y)
                     stepdelay = stepdelay / pace
                 elif axis == "y":
-                    y = math.sin(t)
-                    clockwise = True if y > 0 else False
-                    pace = 0.1 + math.fabs(10 * math.cos(t))
+                    clockwise = True if x < 0 else False
+                    pace = 0.1 + math.fabs(10 * x)
                     stepdelay = stepdelay / pace
                 GPIO.output(self.direction_pin, clockwise)
 
