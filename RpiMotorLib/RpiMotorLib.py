@@ -24,6 +24,7 @@
 import sys
 import time
 import RPi.GPIO as GPIO
+import math
 
 # ==================== CLASS SECTION ===============================
 
@@ -315,6 +316,106 @@ class A4988Nema(object):
                 print("\nRpiMotorLib, Motor Run finished, Details:.\n")
                 print("Motor type = {}".format(self.motor_type))
                 print("Clockwise = {}".format(clockwise))
+                print("Step Type = {}".format(steptype))
+                print("Number of steps = {}".format(steps))
+                print("Step Delay = {}".format(stepdelay))
+                print("Intial delay = {}".format(initdelay))
+                print("Size of turn in degrees = {}"
+                      .format(degree_calc(steps, steptype)))
+        finally:
+            # cleanup
+            GPIO.output(self.step_pin, False)
+            GPIO.output(self.direction_pin, False)
+            if self.mode_pins != False:
+                for pin in self.mode_pins:
+                    GPIO.output(pin, False)
+
+    def motor_spiral(self, axis="x", steptype="Full",
+                 steps=200, stepdelay=.005, verbose=False, initdelay=.05, ramp_steps = 100):
+        """ motor_go,  moves stepper motor based on 6 inputs
+
+         (1) clockwise, type=bool default=False
+         help="Turn stepper counterclockwise"
+         (2) steptype, type=string , default=Full help= type of drive to
+         step motor 5 options
+            (Full, Half, 1/4, 1/8, 1/16) 1/32 for DRV8825 only
+         (3) steps, type=int, default=200, help=Number of steps sequence's
+         to execute. Default is one revolution , 200 in Full mode.
+         (4) stepdelay, type=float, default=0.05, help=Time to wait
+         (in seconds) between steps.
+         (5) verbose, type=bool  type=bool default=False
+         help="Write pin actions",
+         (6) initdelay, type=float, default=1mS, help= Intial delay after
+         GPIO pins initialized but before motor is moved.
+
+        """
+        # check if ramp_steps * 2 is greater than steps
+        # if so deactivate the ramp
+        if ramp_steps * 2 > steps:
+            ramp_steps = 0
+        self.stop_motor = False
+        # setup GPIO
+        GPIO.setup(self.direction_pin, GPIO.OUT)
+        GPIO.setup(self.step_pin, GPIO.OUT)
+        if self.mode_pins != False:
+            GPIO.setup(self.mode_pins, GPIO.OUT)
+
+        try:
+            # dict resolution
+            self.resolution_set(steptype)
+            time.sleep(initdelay)
+            saved_stepdelay = stepdelay
+            for i in range(steps):
+                t = i / 100
+                if axis == "x":
+                    x = 25 * math.cos(t) * math.exp(0.012 * t)
+                    x1 = 25 * math.cos(t + 0.01) * math.exp(0.012 * (t + 0.01))
+                    clockwise = True if x > 0 else False
+                    pace = 10 * math.abs(x1 - x)
+                    stepdelay = stepdelay / pace
+                elif axis == "y":
+                    y = 25 * math.sin(t) * math.exp(0.012 * t)
+                    y1 = 25 * math.sin(t + 0.01) * math.exp(0.012 * (t + 0.01))
+                    clockwise = True if y > 0 else False
+                    pace = 10 * math.abs(y1 - y)
+                    stepdelay = stepdelay / pace
+                GPIO.output(self.direction_pin, clockwise)
+
+                #if i < ramp_steps or i > steps - ramp_steps:
+                #    if i < ramp_steps:
+                #        stepdelay = saved_stepdelay / ((i + 1) / ramp_steps)
+                #    else:
+                #        stepdelay = saved_stepdelay / ((steps - i) / ramp_steps)
+                #    if stepdelay > .05:
+                #        stepdelay = .05
+                #else:
+                #    stepdelay = saved_stepdelay
+
+                if self.stop_motor:
+                    raise StopMotorInterrupt
+                else:
+                    GPIO.output(self.step_pin, True)
+                    time.sleep(stepdelay)
+                    GPIO.output(self.step_pin, False)
+                    time.sleep(stepdelay)
+                    if verbose:
+                        print("Steps count {}".format(i+1), end="\r", flush=True)
+                stepdelay = saved_stepdelay
+
+        except KeyboardInterrupt:
+            print("User Keyboard Interrupt : RpiMotorLib:")
+        except StopMotorInterrupt:
+            print("Stop Motor Interrupt : RpiMotorLib: ")
+        except Exception as motor_error:
+            print(sys.exc_info()[0])
+            print(motor_error)
+            print("RpiMotorLib  : Unexpected error:")
+        else:
+            # print report status
+            if verbose:
+                print("\nRpiMotorLib, Motor Run finished, Details:.\n")
+                print("Motor type = {}".format(self.motor_type))
+                print("Axis = {}".format(axis))
                 print("Step Type = {}".format(steptype))
                 print("Number of steps = {}".format(steps))
                 print("Step Delay = {}".format(stepdelay))
