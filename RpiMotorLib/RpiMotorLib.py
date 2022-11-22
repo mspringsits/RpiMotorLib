@@ -430,6 +430,74 @@ class A4988Nema(object):
                 for pin in self.mode_pins:
                     GPIO.output(pin, False)
 
+    def motor_circle(self, axis="x", steptype="Full",
+                 steps=200, stepdelay=.005, verbose=False, initdelay=.05, ramp_steps = 100):
+        self.stop_motor = False
+        # setup GPIO
+        GPIO.setup(self.direction_pin, GPIO.OUT)
+        GPIO.setup(self.step_pin, GPIO.OUT)
+        if self.mode_pins != False:
+            GPIO.setup(self.mode_pins, GPIO.OUT)
+
+        try:
+            # dict resolution
+            self.resolution_set(steptype)
+            time.sleep(initdelay)
+            saved_stepdelay = stepdelay
+            for i in range(steps):
+                t_fractal = (math.pi * 2) / steps
+                t = i * t_fractal
+                if axis == "x":
+                    x = math.cos(t)
+                    clockwise = True if x > 0 else False
+                    pace = 10 * math.sin(t)
+                    stepdelay = stepdelay / pace
+                elif axis == "y":
+                    y = math.sin(t)
+                    clockwise = True if y > 0 else False
+                    pace = 10 * math.cos(t)
+                    stepdelay = stepdelay / pace
+                GPIO.output(self.direction_pin, clockwise)
+
+                if self.stop_motor:
+                    raise StopMotorInterrupt
+                else:
+                    GPIO.output(self.step_pin, True)
+                    time.sleep(stepdelay)
+                    GPIO.output(self.step_pin, False)
+                    time.sleep(stepdelay)
+                    if verbose:
+                        print("Steps count {}".format(i+1), end="\r", flush=True)
+                stepdelay = saved_stepdelay
+
+        except KeyboardInterrupt:
+            print("User Keyboard Interrupt : RpiMotorLib:")
+        except StopMotorInterrupt:
+            print("Stop Motor Interrupt : RpiMotorLib: ")
+        except Exception as motor_error:
+            print(sys.exc_info()[0])
+            print(motor_error)
+            print("RpiMotorLib  : Unexpected error:")
+        else:
+            # print report status
+            if verbose:
+                print("\nRpiMotorLib, Motor Run finished, Details:.\n")
+                print("Motor type = {}".format(self.motor_type))
+                print("Axis = {}".format(axis))
+                print("Step Type = {}".format(steptype))
+                print("Number of steps = {}".format(steps))
+                print("Step Delay = {}".format(stepdelay))
+                print("Intial delay = {}".format(initdelay))
+                print("Size of turn in degrees = {}"
+                      .format(degree_calc(steps, steptype)))
+        finally:
+            # cleanup
+            GPIO.output(self.step_pin, False)
+            GPIO.output(self.direction_pin, False)
+            if self.mode_pins != False:
+                for pin in self.mode_pins:
+                    GPIO.output(pin, False)
+
 
 class A3967EasyNema(object):
     """ Class to control a Nema bi-polar stepper motor with A3967 Easy driver
