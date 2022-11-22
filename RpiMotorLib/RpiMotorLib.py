@@ -450,12 +450,12 @@ class A4988Nema(object):
                 if axis == "x":
                     x = math.cos(t)
                     clockwise = True if x > 0 else False
-                    pace = 0.1 + 10 * math.sin(t)
+                    pace = 0.1 + math.fabs(10 * math.sin(t))
                     stepdelay = stepdelay / pace
                 elif axis == "y":
                     y = math.sin(t)
                     clockwise = True if y > 0 else False
-                    pace = 0.1 + 10 * math.cos(t)
+                    pace = 0.1 + math.fabs(10 * math.cos(t))
                     stepdelay = stepdelay / pace
                 GPIO.output(self.direction_pin, clockwise)
 
